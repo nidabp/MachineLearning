@@ -147,7 +147,7 @@ def GetTrainData(df_raw):
     
     df = df_raw.copy()
     y = df['target'].values
-    df.drop(['id','target'],axis=1,inplace=True)
+    df.drop(['target'],axis=1,inplace=True)
     df.head().T
     
     df,median_dict = preprocesstrain(df)
@@ -267,7 +267,7 @@ def ReadyTestData(df_test,median_dict) :
     
     df = df_test.copy()
     ids = df['id'].values
-    df.drop(['id'],axis=1,inplace=True)
+    #df.drop(['id'],axis=1,inplace=True)
     
     df = preprocesstest(df,median_dict)
     
