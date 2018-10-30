@@ -283,6 +283,16 @@ def PredictTestSet(X_test, ids, predicted_model):
     predmat = np.column_stack((ids,y)) 
     
     return predmat
+
+def GetImportances(predictedmodel,df) :
+    importances = predictedmodel.feature_importances_
+    indices = np.argsort(importances)[::-1]
+    df_imp = pd.DataFrame(columns=['cols','imp'])
+    j = 0
+    for f in range(df.shape[1]):
+        df_imp.loc[j] = [df.columns[indices[f]],importances[indices[f]]]
+        j = j + 1
+    return df_imp
     
 
 
@@ -320,10 +330,57 @@ df_print.to_csv("C:\\Users\\Admin\\Downloads\\QuarticPred.csv",index=False)
 # In[27]:
 
 
+get_ipython().run_line_magic('time', 'preds = np.stack([t.predict(X_valid) for t in predictedmodel.estimators_])')
+np.mean(preds[:,0]),np.std(preds[:,0])
+
+
+# In[28]:
+
+
+df_imp = GetImportances(predictedmodel,df); df_imp[:10]
+
+
+# In[29]:
+
+
+df_imp.plot('cols','imp',figsize=(10,6),legend=False)
+
+
+# In[30]:
+
+
+to_keep = df_imp[df_imp.imp > 0.02].cols;len(to_keep)
+
+
+# In[31]:
+
+
+mediandict = {}
+df,y,mediandict = GetTrainData(df_train)
+df_keep = df[to_keep].copy()
+X_train_new,y_train_new,X_valid_new,y_valid_new = GetTrainValid(df_keep,y,250000)
+newmodel = TrainRandomForest(X_train_new,y_train_new,X_valid_new,y_valid_new)
+
+
+# In[32]:
+
+
+fi = GetImportances(newmodel,df_keep); fi[:]
+
+
+# In[33]:
+
+
+fi.plot('cols','imp','barh',figsize=(12,7),legend=False)
+
+
+# In[34]:
+
+
 predictedmodel = TrainLogisticRegression(X_train,y_train,X_valid,y_valid)
 
 
-# In[ ]:
+# In[35]:
 
 
 yvalid_predict = predictedmodel.predict(X_valid)
