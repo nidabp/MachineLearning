@@ -26,24 +26,29 @@ get_ipython().run_line_magic('matplotlib', 'inline')
 
 filepath = 'Assignment/'
 df_train = pd.read_csv(filepath + 'data_train.csv')
-df_train.shape
 df_test = pd.read_csv(filepath + 'data_test.csv')
-df_test.shape
+df_train.shape
 
 
 # In[3]:
 
 
-df_train.describe(include='all')
+df_test.shape
 
 
 # In[4]:
 
 
-df_test.describe(include='all')
+df_train.describe(include='all')
 
 
 # In[5]:
+
+
+df_test.describe(include='all')
+
+
+# In[6]:
 
 
 for i in range(1,15):
@@ -52,7 +57,7 @@ for i in range(1,15):
         df_test[name] = pd.Categorical(df_test[name])       
 
 
-# In[6]:
+# In[7]:
 
 
 def display_all(df):
@@ -62,26 +67,26 @@ def display_all(df):
         
 
 
-# In[7]:
+# In[8]:
 
 
 display_all(df_train.head().T)
 
 
-# In[8]:
+# In[9]:
 
 
 df_train.info(verbose=True, null_counts=True)
 
 
-# In[9]:
+# In[10]:
 
 
 null_columns=df_train.columns[df_train.isnull().any()]
 df_train[null_columns].isnull().sum()
 
 
-# In[10]:
+# In[11]:
 
 
 def is_numeric_dtype(col):
@@ -119,14 +124,33 @@ def preprocesstest(df,meddict):
                 
     return df
 
-def numericalize(df,col,name):
-    if not is_numeric_dtype(col):
-        df[name] = df[name].cat.codes+1
+def numericalize(df):
+    for n,c in df.items():
+        if not is_numeric_dtype(c):
+            df[n] = df[n].cat.codes+1
+    return df
+        
+def OneHotEncode(df_train,df_test,max_cat_length) :
+    
+    len_train = df_train.shape[0]
+    len_test = df_test.shape[0]
+    
+    df = pd.concat([df_train,df_test])
+    for n,c in df.items():
+        if not is_numeric_dtype(c):
+            if len(c.unique()) < max_cat_length : 
+                df = pd.get_dummies(df,columns=[n])
+            
+    df_train = df.iloc[0:len_train,:]
+    df_test = df.iloc[len_train:,:]
+    
+    return df_train, df_test
+        
         
 def split_vals(a,n): return a[:n].copy(), a[n:].copy()   
 
 
-# In[11]:
+# In[12]:
 
 
 def GetPCA(df,var):
@@ -138,7 +162,7 @@ def GetPCA(df,var):
     return pca
 
 
-# In[12]:
+# In[13]:
 
 
 def GetTrainData(df_raw):
@@ -152,8 +176,7 @@ def GetTrainData(df_raw):
     
     df,median_dict = preprocesstrain(df)
     
-    for n,c in df.items():
-        numericalize(df,c,n)
+    df = numericalize(df)
         
     return df,y,median_dict
 
@@ -165,23 +188,56 @@ def GetTrainValid(df,y,n_valid):
     
     return X_train,y_train,X_valid,y_valid
 
+def ReadyTestData(df_test,median_dict) :
+    
+    predmat = np.zeros((df_test.shape[0],2))
+    
+    df = df_test.copy()
+    ids = df['id'].values
+    #df.drop(['id'],axis=1,inplace=True)
+    
+    df = preprocesstest(df,median_dict)
+    
+    df = numericalize(df)
+        
+    return df,ids
 
-# In[13]:
+
+# In[14]:
 
 
 mediandict = {}
 df,y,mediandict = GetTrainData(df_train)
+X_test,ids = ReadyTestData(df_test,mediandict)
+df,X_test = OneHotEncode(df,X_test,7)
+
+
+# In[15]:
+
+
+print(X_test.shape)
+
+
+# In[16]:
+
+
+display_all(df.head().T)
+
+
+# In[17]:
+
+
 X_train,y_train,X_valid,y_valid = GetTrainValid(df,y,25000)
 
 
-# In[14]:
+# In[18]:
 
 
 corrdata = df.iloc[:,0:42]
 corrdata.apply(lambda x : pd.factorize(x)[0]).corr(method='pearson', min_periods=1)
 
 
-# In[15]:
+# In[19]:
 
 
 i = 9
@@ -193,47 +249,46 @@ pdf = norm.pdf(h, hmean, hstd)
 plt.plot(h, pdf)
 
 
-# In[16]:
+# In[43]:
 
 
-h = df.iloc[:,47]
+h = df.iloc[:,43]
 h.value_counts().plot(kind='bar')
 
 
-# In[17]:
+# In[40]:
 
 
 chitestmat = list()
-colcount = len(df.columns)
-for i in range(42,colcount) :
+for i in range(42,47) :
     ind_chi_test = chisquare(df.iloc[:,i])
     chitestmat.append(ind_chi_test[1])
 np.set_printoptions(formatter={'float': lambda x: "{0:0.3f}".format(x)})
 display_all(chitestmat)
 
 
-# In[18]:
+# In[42]:
 
 
 colcount = len(df.columns)
-ttestmat = np.zeros((colcount,colcount))
-for i in range(42,colcount) :
-    for j in range(42,colcount) :
+ttestmat = np.zeros((5,5))
+for i in range(42,47) :
+    for j in range(42,47) :
         if i != j :
             ind_t_test = ttest_ind(df.iloc[:,i],df.iloc[:,j])
-            ttestmat[i][j] = ind_t_test[1]
+            ttestmat[i-42][j-42] = ind_t_test[1]
 np.set_printoptions(formatter={'float': lambda x: "{0:0.3f}".format(x)})
 display_all(ttestmat)
 
 
-# In[19]:
+# In[23]:
 
 
 h = pd.Series(y.tolist())
 h.value_counts().plot(kind='bar')
 
 
-# In[20]:
+# In[24]:
 
 
 def TrainRandomForest(X_train,y_train,X_valid,y_valid):
@@ -247,7 +302,7 @@ def TrainRandomForest(X_train,y_train,X_valid,y_valid):
     return m
 
 
-# In[21]:
+# In[25]:
 
 
 def TrainLogisticRegression(X_train,y_train,X_valid,y_valid):
@@ -259,22 +314,7 @@ def TrainLogisticRegression(X_train,y_train,X_valid,y_valid):
     return m
 
 
-# In[22]:
-
-
-def ReadyTestData(df_test,median_dict) :
-    predmat = np.zeros((df_test.shape[0],2))
-    
-    df = df_test.copy()
-    ids = df['id'].values
-    #df.drop(['id'],axis=1,inplace=True)
-    
-    df = preprocesstest(df,median_dict)
-    
-    for n,c in df.items():
-        numericalize(df,c,n)
-        
-    return df,ids
+# In[26]:
 
 
 def PredictTestSet(X_test, ids, predicted_model):
@@ -296,7 +336,7 @@ def GetImportances(predictedmodel,df) :
     
 
 
-# In[23]:
+# In[27]:
 
 
 # pca = GetPCA(X_train,0.95)
@@ -304,55 +344,54 @@ def GetImportances(predictedmodel,df) :
 # X_valid = pca.transform(X_valid)
 
 
-# In[24]:
+# In[28]:
 
 
 predictedmodel = TrainRandomForest(X_train,y_train,X_valid,y_valid)
 
 
-# In[25]:
+# In[29]:
 
 
 yvalid_predict = predictedmodel.predict(X_valid)
 print(classification_report(y_valid, yvalid_predict))
 
 
-# In[26]:
+# In[30]:
 
 
-X_test,ids = ReadyTestData(df_test,mediandict)
 # X_test = pca.transform(X_test)
 predmat = PredictTestSet(X_test, ids, predictedmodel)
 df_print = pd.DataFrame(predmat,columns=["id","target"])
 df_print.to_csv("C:\\Users\\Admin\\Downloads\\QuarticPred.csv",index=False)
 
 
-# In[27]:
+# In[31]:
 
 
 get_ipython().run_line_magic('time', 'preds = np.stack([t.predict(X_valid) for t in predictedmodel.estimators_])')
 np.mean(preds[:,0]),np.std(preds[:,0])
 
 
-# In[28]:
+# In[32]:
 
 
 df_imp = GetImportances(predictedmodel,df); df_imp[:10]
 
 
-# In[29]:
+# In[33]:
 
 
 df_imp.plot('cols','imp',figsize=(10,6),legend=False)
 
 
-# In[30]:
+# In[34]:
 
 
 to_keep = df_imp[df_imp.imp > 0.02].cols;len(to_keep)
 
 
-# In[31]:
+# In[35]:
 
 
 mediandict = {}
@@ -362,25 +401,25 @@ X_train_new,y_train_new,X_valid_new,y_valid_new = GetTrainValid(df_keep,y,250000
 newmodel = TrainRandomForest(X_train_new,y_train_new,X_valid_new,y_valid_new)
 
 
-# In[32]:
+# In[36]:
 
 
 fi = GetImportances(newmodel,df_keep); fi[:]
 
 
-# In[33]:
+# In[37]:
 
 
 fi.plot('cols','imp','barh',figsize=(12,7),legend=False)
 
 
-# In[34]:
+# In[38]:
 
 
 predictedmodel = TrainLogisticRegression(X_train,y_train,X_valid,y_valid)
 
 
-# In[35]:
+# In[39]:
 
 
 yvalid_predict = predictedmodel.predict(X_valid)
